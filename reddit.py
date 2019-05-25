@@ -5,6 +5,7 @@ from ftplib import FTP
 import random as r
 import passwords
 
+#grabs a file that has all of the ticker symbols
 def grabFile():
 	ftp = FTP('ftp.nasdaqtrader.com')
 	ftp.login()       
@@ -15,7 +16,8 @@ def grabFile():
 	return localfile
 
 
-
+#binary search implementation 
+#true if in list, otherwise false
 def quickFind(list, item):
 	def quickFindHelper(list, item, start, end):
 		mid = int((end+start)/2)
@@ -37,6 +39,7 @@ def isSorted(list):
 			return False
 	return True
 
+#takes the special ticker file and turns it into a list of tickers
 def fileToList(file):
 	ret = []
 	for line in file.readlines()[1:-1]:
