@@ -5,6 +5,11 @@ from ftplib import FTP
 import random as r
 import passwords
 
+#TO DO
+#	Add a trading system 
+#	Make sure that the posts are new (last 24 hours)
+#	Set it up so that it runs once-a-day everyday at noon
+
 #these tickers are problematic as they often come up in daily speech
 #sorry Dave and Busters (play) and Atlassian (team) 
 tickersToSkip = ["on", "has", "good", "play", "next", "turn", "any", "east", "self", "form", "stay", "beat", "car", "glad", "care", "else", "tell", "old", "road", "cash", "live", "baby", "run", "grow", "auto", "meet", "ever", "info", "mind", "fold", "wash", "chef", "lazy", "z", "roll", "fast", "alot", "team", "five", "laws", "cost", "jobs", "true", "love", "gain", "life"]
