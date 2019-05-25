@@ -5,6 +5,9 @@ from ftplib import FTP
 import random as r
 import passwords
 
+tickersToSkip = ["on", "has", "good", "play", "next", "turn", "any", "east", "self", "form", "stay", "beat", "car", "glad", "care", "else", "tell", "old", "road", "cash", "live", "baby", "run", "grow", "auto", "meet", "ever", "info", "mind", "fold", "wash", "chef", "lazy", "z", "roll", "fast", "alot", "team", "five", "laws", "cost", "jobs", "true", "love", "gain", "life"]
+
+
 #grabs a file that has all of the ticker symbols
 def grabFile():
 	ftp = FTP('ftp.nasdaqtrader.com')
@@ -33,6 +36,8 @@ def quickFind(list, item):
 			return True
 	return quickFindHelper(list, item, 0, len(list)-1)
 
+#returns a boolean 
+#checks if a list is sorted
 def isSorted(list):
 	for i in range(len(list)-1):
 		if (list[i] > list[i+1]):
@@ -40,13 +45,19 @@ def isSorted(list):
 	return True
 
 #takes the special ticker file and turns it into a list of tickers
+#the list will be all lowercase
+#will remove problematic tickers
 def fileToList(file):
 	ret = []
 	for line in file.readlines()[1:-1]:
 		parts = line.split("|")
-		ret.append(parts[0])	
+		tick = parts[0].lower()
+		if not tick in tickersToSkip:
+			ret.append(parts[0].lower())	
 	return ret
 
+#makes sure that list is sorted correctly
+#good to check considering the list being pulled from the internet
 def test(myList, numberOfRandoms):
 	ret = True
 
@@ -112,7 +123,55 @@ def test(myList, numberOfRandoms):
 
 	return ret 
 
+#returns a list of tuples with the number of times a stock ticker is mentioned
+#(tickerSymbol, # of mentions)
+def findMostPopularStocks(subreddit, tickerList):
+	values = {}
+	for submission in subreddit.new(limit=100):
+		submission.comments.replace_more(limit=0)
+		all_comments = submission.comments.list()
+		for comment in all_comments:
+			searchableComment = comment.body.lower()
+			for tick in tickerList:
+				if tick in searchableComment:
+					if values.get(tick) != None:
+						values[tick] = values.get(tick)+1
+					else:	
+						values[tick] = 1
+	return sorted(values.items(), key = lambda x: x[1], reverse = True)
 
+#returns a list of tuples with the reactions to each symbols
+#(tickerSymbol, + (is a buy) / - (is a sell))
+def stockReactions(subreddit, tickerList):
+	positiveWords = ["buy", "long", "calls"]
+	negativeWords = ["sell", "short", "puts"]
+	values = {}
+	for submission in subreddit.new(limit=100):
+		submission.comments.replace_more(limit=0)
+		all_comments = submission.comments.list()
+		for comment in all_comments:
+			searchableComment = comment.body.lower().split(" ")
+			print(searchableComment)
+			for tick in tickerList:
+				if tick in searchableComment:
+					for pWord in positiveWords:
+						if pWord in searchableComment:
+							if values.get(tick) != None:
+								values[tick] = values.get(tick)+1
+							else:	
+								values[tick] = 1
+							break
+					for nWord in negativeWords:
+						if nWord in searchableComment:
+							if values.get(tick) != None:
+								values[tick] = values.get(tick)-1
+							else:	
+								values[tick] = -1
+							break
+	return sorted(values.items(), key = lambda x: x[1], reverse=True)
+
+
+#uses all of the other functions
 def run():
 	tickerFile = grabFile()
 	tickerList = fileToList(tickerFile)
@@ -128,12 +187,7 @@ def run():
 
 	subreddit = reddit.subreddit('wallstreetbets')
 
-	for submission in subreddit.new(limit=100):
-		#print(submission.title)
-		submission.comments.replace_more(limit=0)
-		all_comments = submission.comments.list()
-		for comment in all_comments:
-			if ("long" in comment.body.lower() or "short" in comment.body.lower()):
-				print(comment.body)
+	print(stockReactions(subreddit, tickerList))
+				print(searchableComment,"**" ,tick)
 
 run()
