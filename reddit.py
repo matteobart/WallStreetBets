@@ -15,7 +15,7 @@ import datetime as dt
 
 #these tickers are problematic as they often come up in daily speech
 #sorry Dave and Busters (play) and Atlassian (team) 
-tickersToSkip = ["on", "has", "good", "play", "next", "turn", "any", "east", "self", "form", "stay", "beat", "car", "glad", "care", "else", "tell", "old", "road", "cash", "live", "baby", "run", "grow", "auto", "meet", "ever", "info", "mind", "fold", "wash", "chef", "lazy", "z", "roll", "fast", "alot", "team", "five", "laws", "cost", "jobs", "true", "love", "gain", "life"]
+tickersToSkip = ["on", "has", "good", "play", "next", "turn", "any", "east", "self", "form", "stay", "beat", "car", "glad", "care", "else", "tell", "old", "road", "cash", "live", "baby", "run", "grow", "auto", "meet", "ever", "info", "mind", "fold", "wash", "chef", "lazy", "z", "roll", "fast", "alot", "team", "five", "laws", "cost", "jobs", "true", "love", "gain", "life", "once", "tech", "core"]
 
 #will return a json object with portoflio information
 def getCurrentPortfolio():
@@ -219,9 +219,14 @@ def getOption(tickerSymbol, isCall):
 	return opt
 
 #given the list will update the portfolio accordingly 
-#including writng to the file
+#including writing to the file
 def updatePortfolio(reactionList):
-	return 0
+	print(reactionList)
+	optionsToBuy = []
+	if (len(reactionList)>5):
+		optionsToBuy.append(reactionList[0][0])
+		#TO DO
+
 
 #uses all of the other functions
 def run():
@@ -238,8 +243,8 @@ def run():
 						user_agent=passwords.agent)
 
 	subreddit = reddit.subreddit('wallstreetbets')
+	reactions = stockReactions(subreddit, tickerList)
+	updatePortfolio(reactions)
 
-	print(stockReactions(subreddit, tickerList))
-	print(searchableComment,"**" ,tick)
 
 run()
