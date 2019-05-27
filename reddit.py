@@ -4,7 +4,7 @@ import datetime as dt
 from ftplib import FTP
 import random as r
 import passwords
-from wallstreet import Call, Put
+from wallstreet import Call, Put, Stock
 import json 
 import datetime as dt
 
@@ -172,7 +172,7 @@ def stockReactions(subreddit, tickerList):
 		submission.comments.replace_more(limit=0)
 		all_comments = submission.comments.list()
 		for comment in all_comments:
-			searchableComment = comment.body.lower().split(" ")
+			searchableComment = comment.body.lower().replace("\n", " ").split(" ")
 			print(searchableComment)
 			for tick in tickerList:
 				if tick in searchableComment:
@@ -193,13 +193,30 @@ def stockReactions(subreddit, tickerList):
 	return sorted(values.items(), key = lambda x: x[1], reverse=True)
 
 #given a string containing a date (formatted via wallstreet)
-#returns a date time version 
+#dd-mm-yyyy
+#returns a date time object 
 def convertDate(dateString):
-	return 0
+	return dt.strptime(dateString, '%d-%m-%Y')
+
+#given a ticker symbol
+#will return price
+def getStockPrice(tickerSymbol):
+	s = Stock(tickerSymbol, source="yahoo")
+	return s.price
+
+#this returns date as a tuple
+#this returns a date 3 months in the future
+#Format: (day, month, year)
+def getFutureDate():
+	currentDate = dt.datetime.now() + dt.timedelta(days=30)
+	return (currentDate.day, currentDate.month, currentDate.year)
 
 #given a ticker will find an option (ideally with a 3 month expiry date)
-def getOption(tickerSymbol):
-	return 0
+def getOption(tickerSymbol, isCall):
+	price = getStockPrice(tickerSymbol)
+	date = getFutureDate()
+	opt = Call(tickerSymbol, d=date[0], m=date[1], y=date[2], source="yahoo") if isCall else  Put(tickerSymbol, d=date[0], m=date[1], y=date[2], source="yahoo")
+	return opt
 
 #given the list will update the portfolio accordingly 
 #including writng to the file
