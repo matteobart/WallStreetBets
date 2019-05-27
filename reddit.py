@@ -6,6 +6,7 @@ import random as r
 import passwords
 from wallstreet import Call, Put
 import json 
+import datetime as dt
 
 #TO DO
 #	Add a trading system 
@@ -191,6 +192,19 @@ def stockReactions(subreddit, tickerList):
 							break
 	return sorted(values.items(), key = lambda x: x[1], reverse=True)
 
+#given a string containing a date (formatted via wallstreet)
+#returns a date time version 
+def convertDate(dateString):
+	return 0
+
+#given a ticker will find an option (ideally with a 3 month expiry date)
+def getOption(tickerSymbol):
+	return 0
+
+#given the list will update the portfolio accordingly 
+#including writng to the file
+def updatePortfolio(reactionList):
+	return 0
 
 #uses all of the other functions
 def run():
@@ -209,6 +223,6 @@ def run():
 	subreddit = reddit.subreddit('wallstreetbets')
 
 	print(stockReactions(subreddit, tickerList))
-				print(searchableComment,"**" ,tick)
+	print(searchableComment,"**" ,tick)
 
 run()
