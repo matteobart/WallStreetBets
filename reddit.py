@@ -12,6 +12,7 @@ import datetime as dt
 #	Add a trading system 
 #	Make sure that the posts are new (last 24 hours)
 #	Set it up so that it runs once-a-day everyday at noon
+#	Make sure that the options will work (new stocks won't have options)
 
 #these tickers are problematic as they often come up in daily speech
 #sorry Dave and Busters (play) and Atlassian (team) 
@@ -208,24 +209,59 @@ def getStockPrice(tickerSymbol):
 #this returns a date 3 months in the future
 #Format: (day, month, year)
 def getFutureDate():
-	currentDate = dt.datetime.now() + dt.timedelta(days=30)
+	currentDate = dt.datetime.now() + dt.timedelta(days=90)
 	return (currentDate.day, currentDate.month, currentDate.year)
 
 #given a ticker will find an option (ideally with a 3 month expiry date)
 def getOption(tickerSymbol, isCall):
 	price = getStockPrice(tickerSymbol)
 	date = getFutureDate()
-	opt = Call(tickerSymbol, d=date[0], m=date[1], y=date[2], source="yahoo") if isCall else  Put(tickerSymbol, d=date[0], m=date[1], y=date[2], source="yahoo")
+	opt = Call(tickerSymbol, d=date[0], m=date[1], y=date[2], source="yahoo") if isCall else Put(tickerSymbol, d=date[0], m=date[1], y=date[2], source="yahoo")
 	return opt
+
+
 
 #given the list will update the portfolio accordingly 
 #including writing to the file
-def updatePortfolio(reactionList):
+#will return a tuple 
+#Tuple Format: (spent, newOptions)
+#NewOptions Format: 
+#	[{'Stock Name': 'AMD', 'Underlying Price': 26.44, 'Price': 2.26, 'Expiry': '19-07-2019', 'Call': True},...]
+def newPortfolio(reactionList):
+	spent = 0
+	newOptions = []
 	print(reactionList)
 	optionsToBuy = []
 	if (len(reactionList)>5):
-		optionsToBuy.append(reactionList[0][0])
-		#TO DO
+		optionsToBuy.append(getOption(reactionList[0][0], True))
+		optionsToBuy.append(getOption(reactionList[1][0], True))
+		optionsToBuy.append(getOption(reactionList[2][0], True))
+		optionsToBuy.append(getOption(reactionList[-1][0], False))
+		optionsToBuy.append(getOption(reactionList[-2][0], False))
+		optionsToBuy.append(getOption(reactionList[-3][0], False))
+	for option in optionsToBuy:
+		#lets find the best strike price to use
+		bestStrike = option.strikes[0]
+		price = option.underlying.price
+		for strike in option.strikes:
+			if abs(bestStrike-price) > abs(strike-price):
+				bestStrike = strike
+		option.set_strike(bestStrike)
+		add = {}
+		add["Stock Name"] = option.ticker
+		add["Underlying Price"] = option.underlying.price
+		add["Price"] = option.price
+		add["Expiry"] = option.expiration
+		add["Call"] = isinstance(option, Call)
+		print(add)
+		spent += option.price * 100
+		newOptions.append(add)
+	return (spent, newOptions)		
+
+
+def updatePortfolio():
+
+	return 0
 
 
 #uses all of the other functions
@@ -244,7 +280,7 @@ def run():
 
 	subreddit = reddit.subreddit('wallstreetbets')
 	reactions = stockReactions(subreddit, tickerList)
-	updatePortfolio(reactions)
+	newPortfolio(reactions)
 
 
 run()
