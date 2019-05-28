@@ -221,12 +221,11 @@ def getOption(tickerSymbol, isCall):
 
 
 
-#given the list will update the portfolio accordingly 
-#including writing to the file
+#given the list will return the values to update your portfolio  
 #will return a tuple 
 #Tuple Format: (spent, newOptions)
 #NewOptions Format: 
-#	[{'Stock Name': 'AMD', 'Underlying Price': 26.44, 'Price': 2.26, 'Expiry': '19-07-2019', 'Call': True},...]
+#	[{'Stock Name': 'AMD', 'Underlying Price': 26.44, 'Price': 2.26, 'Strike': 24, 'Expiry': '19-07-2019', 'Call': True},...]
 def newPortfolio(reactionList):
 	spent = 0
 	newOptions = []
@@ -250,6 +249,7 @@ def newPortfolio(reactionList):
 		add = {}
 		add["Stock Name"] = option.ticker
 		add["Underlying Price"] = option.underlying.price
+		add["Strike"] = bestStrike
 		add["Price"] = option.price
 		add["Expiry"] = option.expiration
 		add["Call"] = isinstance(option, Call)
@@ -258,10 +258,30 @@ def newPortfolio(reactionList):
 		newOptions.append(add)
 	return (spent, newOptions)		
 
+#given a portfolio (in json) will return the updated value
+#does not actually change the files
+def updatePortfolio(currentPortfolio):
+	value = currentPortfolio["Value"]
+	for i in reversed(range(len(currentPortfolio["Current Options"]))):
+		optionInfo = currentPortfolio["Current Options"][i]
+		date = convertDate(optionInfo["Expiry"])
+		#update the Price, Underlying Price, and add it to value
+		name = optionInfo["Name"]
+		strike = optionInfo["Strike"]
+		isCall = optionInfo["Call"]
+		option = Call(name, d=date[0], m=date[1], y=date[2], strike=strike, source="yahoo") if isCall else Put(name, d=date[0], m=date[1], y=date[2], strike=strike, source="yahoo")
+		#lets update
+		value += (option.price - optionInfo["Price"]) * 100
+		optionInfo["Price"] = option.price
+		optionInfo["Underlying Price"] = option.underlying
+		#if option is expired, lets move it
+		if (date >= dt.datetime.now()):
+			currentPortfolio["Past Options"].append(optionInfo)
+			del currentPortfolio["Current Options"][i]
+	#reset the new value for the portfolio
+	currentPortfolio["Value"] = value
+	return currentPortfolio
 
-def updatePortfolio():
-
-	return 0
 
 
 #uses all of the other functions
@@ -280,7 +300,13 @@ def run():
 
 	subreddit = reddit.subreddit('wallstreetbets')
 	reactions = stockReactions(subreddit, tickerList)
-	newPortfolio(reactions)
+	currentPortfolio = getCurrentPortfolio()
+	toAdd = newPortfolio(reactions)
+	currentPortfolio = updatePortfolio(currentPortfolio)
+	#time to merge toAdd and currentPortfolio
+
+	#save it back to the file
+
 
 
 run()
