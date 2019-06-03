@@ -304,9 +304,10 @@ def run():
 	toAdd = newPortfolio(reactions)
 	currentPortfolio = updatePortfolio(currentPortfolio)
 	#time to merge toAdd and currentPortfolio
-
+	currentPortfolio["Spent"] += toAdd[0]
+	currentPortfolio["Value"] += toAdd[0]
+	currentPortfolio["Current Options"] += toAdd[1]
 	#save it back to the file
-
-
+	savePortfolio(currentPortfolio)
 
 run()
