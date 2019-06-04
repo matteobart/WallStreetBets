@@ -9,14 +9,21 @@ import json
 import datetime as dt
 
 #TO DO
-#	Add a trading system 
 #	Make sure that the posts are new (last 24 hours)
 #	Set it up so that it runs once-a-day everyday at noon
-#	Make sure that the options will work (new stocks won't have options)
+#	Make sure that the least popular stocks are actually negative
+#	Solved: Make sure that the options will work (new stocks won't have options)
+
+
+#NOTES
+#	It is possible that less than 6 stocks are added
+#		If reactionList is too small
+#		If no options are avail will simply skip it (no replacement)
+
 
 #these tickers are problematic as they often come up in daily speech
 #sorry Dave and Busters (play) and Atlassian (team) 
-tickersToSkip = ["on", "has", "good", "play", "next", "turn", "any", "east", "self", "form", "stay", "beat", "car", "glad", "care", "else", "tell", "old", "road", "cash", "live", "baby", "run", "grow", "auto", "meet", "ever", "info", "mind", "fold", "wash", "chef", "lazy", "z", "roll", "fast", "alot", "team", "five", "laws", "cost", "jobs", "true", "love", "gain", "life", "once", "tech", "core"]
+tickersToSkip = ["on", "has", "good", "play", "next", "turn", "any", "east", "self", "form", "stay", "beat", "car", "glad", "care", "else", "tell", "old", "road", "cash", "live", "baby", "run", "grow", "auto", "meet", "ever", "info", "mind", "fold", "wash", "chef", "lazy", "z", "roll", "fast", "alot", "team", "five", "laws", "cost", "jobs", "true", "love", "gain", "life", "once", "tech", "core", "nice", "blue"]
 
 #will return a json object with portoflio information
 def getCurrentPortfolio():
@@ -197,7 +204,12 @@ def stockReactions(subreddit, tickerList):
 #dd-mm-yyyy
 #returns a date time object 
 def convertDate(dateString):
-	return dt.strptime(dateString, '%d-%m-%Y')
+	return dt.datetime.strptime(dateString, '%d-%m-%Y')
+
+#given a date time object, will convert to a tuple
+#Format: (day, month, year)
+def dateToTuple(date):
+	return (date.day, date.month, date.year)
 
 #given a ticker symbol
 #will return price
@@ -216,7 +228,11 @@ def getFutureDate():
 def getOption(tickerSymbol, isCall):
 	price = getStockPrice(tickerSymbol)
 	date = getFutureDate()
-	opt = Call(tickerSymbol, d=date[0], m=date[1], y=date[2], source="yahoo") if isCall else Put(tickerSymbol, d=date[0], m=date[1], y=date[2], source="yahoo")
+	opt = None
+	try: 
+		opt = Call(tickerSymbol, d=date[0], m=date[1], y=date[2], source="yahoo") if isCall else Put(tickerSymbol, d=date[0], m=date[1], y=date[2], source="yahoo")
+	except:
+		print("No options avail")
 	return opt
 
 
@@ -232,12 +248,10 @@ def newPortfolio(reactionList):
 	print(reactionList)
 	optionsToBuy = []
 	if (len(reactionList)>5):
-		optionsToBuy.append(getOption(reactionList[0][0], True))
-		optionsToBuy.append(getOption(reactionList[1][0], True))
-		optionsToBuy.append(getOption(reactionList[2][0], True))
-		optionsToBuy.append(getOption(reactionList[-1][0], False))
-		optionsToBuy.append(getOption(reactionList[-2][0], False))
-		optionsToBuy.append(getOption(reactionList[-3][0], False))
+		for i in range(-3, 3):
+			toAdd = getOption(reactionList[i][0], True if i >= 0 else False)
+			if toAdd != None:
+				optionsToBuy.append(toAdd)
 	for option in optionsToBuy:
 		#lets find the best strike price to use
 		bestStrike = option.strikes[0]
@@ -252,7 +266,7 @@ def newPortfolio(reactionList):
 		add["Strike"] = bestStrike
 		add["Price"] = option.price
 		add["Expiry"] = option.expiration
-		add["Call"] = isinstance(option, Call)
+		add["Call"] = not isinstance(option, Put) #using isinstance(option, Call) always return True
 		print(add)
 		spent += option.price * 100
 		newOptions.append(add)
@@ -265,17 +279,18 @@ def updatePortfolio(currentPortfolio):
 	for i in reversed(range(len(currentPortfolio["Current Options"]))):
 		optionInfo = currentPortfolio["Current Options"][i]
 		date = convertDate(optionInfo["Expiry"])
+		dateTup = dateToTuple(date)
 		#update the Price, Underlying Price, and add it to value
-		name = optionInfo["Name"]
+		name = optionInfo["Stock Name"]
 		strike = optionInfo["Strike"]
 		isCall = optionInfo["Call"]
-		option = Call(name, d=date[0], m=date[1], y=date[2], strike=strike, source="yahoo") if isCall else Put(name, d=date[0], m=date[1], y=date[2], strike=strike, source="yahoo")
+		option = Call(name, d=dateTup[0], m=dateTup[1], y=dateTup[2], strike=strike, source="yahoo") if isCall else Put(name, d=dateTup[0], m=dateTup[1], y=dateTup[2], strike=strike, source="yahoo")
 		#lets update
 		value += (option.price - optionInfo["Price"]) * 100
 		optionInfo["Price"] = option.price
-		optionInfo["Underlying Price"] = option.underlying
+		optionInfo["Underlying Price"] = option.underlying.price
 		#if option is expired, lets move it
-		if (date >= dt.datetime.now()):
+		if (date <= dt.datetime.now()):
 			currentPortfolio["Past Options"].append(optionInfo)
 			del currentPortfolio["Current Options"][i]
 	#reset the new value for the portfolio
