@@ -8,6 +8,9 @@ from wallstreet import Call, Put, Stock
 import json 
 import datetime as dt
 
+dataFilename = "data.txt"
+logfile = open("log2.txt", "a")
+
 #TO DO
 #	Make sure that the posts are new (last 24 hours)
 #	Set it up so that it runs once-a-day everyday at noon
@@ -23,18 +26,29 @@ import datetime as dt
 
 #these tickers are problematic as they often come up in daily speech
 #sorry Dave and Busters (play) and Atlassian (team) 
-tickersToSkip = ["on", "has", "good", "play", "next", "turn", "any", "east", "self", "form", "stay", "beat", "car", "glad", "care", "else", "tell", "old", "road", "cash", "live", "baby", "run", "grow", "auto", "meet", "ever", "info", "mind", "fold", "wash", "chef", "lazy", "z", "roll", "fast", "alot", "team", "five", "laws", "cost", "jobs", "true", "love", "gain", "life", "once", "tech", "core", "nice", "blue"]
+tickersToSkip = ["on", "has", "good", "play", "next", "turn", "any", "east", "self", "form", "stay", "beat", "car", "glad", "care", "else", "tell", "old", "road", "cash", "live", "baby", "run", "grow", "auto", "meet", "ever", "info", "mind", "fold", "wash", "chef", "lazy", "z", "roll", "fast", "alot", "team", "five", "laws", "cost", "jobs", "true", "love", "gain", "life", "once", "tech", "core", "nice", "blue", "hope", "act", "fund", "rare", "calm", "eye", "fat"]
+
+def newLog(tick, expiry, strike, price, oldValue, newValue, oldSpent, newSpent):
+	logfile.write(f"{dt.datetime.now()} | Added {tick} Exp: {expiry} Strike: {strike} Cost: {price}\n")
+	logfile.write(f"\tPortfolio Value: {oldValue} -> {newValue} | Spent: {oldSpent}->{newSpent}\n\n")
+
+def refreshLog(tick, expiry, strike, oldPrice, newPrice, oldValue, newValue, spent):
+	logfile.write(f"{dt.datetime.now()} | Updated {tick} Exp: {expiry} Strike: {strike}\n")
+	logfile.write(f"\tPrice: {oldPrice} -> {newPrice}| Portfolio Value: {oldValue} -> {newValue} | Spent: {spent}\n\n")
 
 #will return a json object with portoflio information
 def getCurrentPortfolio():
-	jsonFile = open("data.txt")
-	ret = json.load(jsonFile)
-	jsonFile.close()
+	try:
+		jsonFile = open(dataFilename)
+		ret = json.load(jsonFile)
+		jsonFile.close()
+	except: 
+		ret = {"Spent": 0, "Value": 0, "Past Options": [], "Current Options": []}
 	return ret
 
 #given some json will save to the file
 def savePortfolio(jsonPortfolio):
-	jsonFile = open("data.txt", "w")
+	jsonFile = open(dataFilename, "w")
 	json.dump(jsonPortfolio, jsonFile)
 	jsonFile.close()
 
@@ -242,9 +256,7 @@ def getOption(tickerSymbol, isCall):
 #Tuple Format: (spent, newOptions)
 #NewOptions Format: 
 #	[{'Stock Name': 'AMD', 'Underlying Price': 26.44, 'Price': 2.26, 'Strike': 24, 'Expiry': '19-07-2019', 'Call': True},...]
-def newPortfolio(reactionList):
-	spent = 0
-	newOptions = []
+def newPortfolio(reactionList, currentPortfolio):
 	print(reactionList)
 	optionsToBuy = []
 	if (len(reactionList)>5):
@@ -267,10 +279,15 @@ def newPortfolio(reactionList):
 		add["Price"] = option.price
 		add["Expiry"] = option.expiration
 		add["Call"] = not isinstance(option, Put) #using isinstance(option, Call) always return True
-		print(add)
-		spent += option.price * 100
-		newOptions.append(add)
-	return (spent, newOptions)		
+		oldSpent = currentPortfolio["Spent"]
+		newSpent = oldSpent + option.price * 100
+		oldValue = currentPortfolio["Value"]
+		newValue = oldValue + option.price * 100
+		newLog(option.ticker, option.expiration, bestStrike, option.price, oldValue, newValue, oldSpent, newSpent) #still need to be filled in
+		currentPortfolio["Spent"] = newSpent
+		currentPortfolio["Value"] = newValue
+		currentPortfolio["Current Options"].append(add)
+	return currentPortfolio
 
 #given a portfolio (in json) will return the updated value
 #does not actually change the files
@@ -286,7 +303,9 @@ def updatePortfolio(currentPortfolio):
 		isCall = optionInfo["Call"]
 		option = Call(name, d=dateTup[0], m=dateTup[1], y=dateTup[2], strike=strike, source="yahoo") if isCall else Put(name, d=dateTup[0], m=dateTup[1], y=dateTup[2], strike=strike, source="yahoo")
 		#lets update
+		oldValue = value
 		value += (option.price - optionInfo["Price"]) * 100
+		refreshLog(name, date, strike, optionInfo["Price"], option.price, oldValue, value, currentPortfolio["Spent"])
 		optionInfo["Price"] = option.price
 		optionInfo["Underlying Price"] = option.underlying.price
 		#if option is expired, lets move it
@@ -316,13 +335,14 @@ def run():
 	subreddit = reddit.subreddit('wallstreetbets')
 	reactions = stockReactions(subreddit, tickerList)
 	currentPortfolio = getCurrentPortfolio()
-	toAdd = newPortfolio(reactions)
 	currentPortfolio = updatePortfolio(currentPortfolio)
+	currentPortfolio = newPortfolio(reactions, currentPortfolio)
 	#time to merge toAdd and currentPortfolio
-	currentPortfolio["Spent"] += toAdd[0]
-	currentPortfolio["Value"] += toAdd[0]
-	currentPortfolio["Current Options"] += toAdd[1]
+	# currentPortfolio["Spent"] += toAdd[0]
+	# currentPortfolio["Value"] += toAdd[0]
+	# currentPortfolio["Current Options"] += toAdd[1]
 	#save it back to the file
 	savePortfolio(currentPortfolio)
+	logfile.close()
 
 run()
